@@ -3,13 +3,16 @@ package com.yuriy.abc;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Observable;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
 
-public class DOMReportProcessor {
+import com.yuriy.abc.MainWindow.ViewCommand;
+
+public class DOMReportProcessor extends Observable {
 
 	public List<RowEntity> rows;
 	
@@ -67,50 +70,75 @@ public class DOMReportProcessor {
 		rows = new ArrayList<RowEntity>();
 	}
 	
+	private void updateInterface(ViewCommand viewCommand)
+	{
+		notifyObservers(viewCommand);
+		setChanged();
+	}
+	
 	public void process(Sheet srcSheet)
 	{
-		System.out.print("Converting file to array... ");
+		//System.out.print("Converting file to array... ");
+		updateInterface(new ViewCommand(0, "Converting file to array... "));
 		rows = new ArrayList<RowEntity>(Arrays.asList(sheetRowsToArray(srcSheet)));
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		//updateInterface(new ViewCommand(0, "Converting file to array... Done."));
 		
-		System.out.print("Detect and remove extra tables... ");
+		//System.out.print("Detect and remove extra tables... ");
+		updateInterface(new ViewCommand(1, "Detect and remove extra tables... "));
 		ExcelRange[] extraTablesIndices =  detectExtraTables(rows.toArray(new RowEntity[0]));
 		removeAreasFromList(extraTablesIndices, rows, null);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(1, "Detect and remove extra tables... Done."));
 		
-		System.out.print("Remove page separators... ");
+		//System.out.print("Remove page separators... ");
+		updateInterface(new ViewCommand(2, "Remove page separators... "));
 		removeSepRows(rows);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(2, "Remove page separators... Done."));
 		
-		System.out.print("Remove empty rows... ");
+		//System.out.print("Remove empty rows... ");
+		updateInterface(new ViewCommand(3, "Remove empty rows... "));
 		removeEmptyRows(rows);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(3, "Remove empty rows... Done."));
 		
-		System.out.print("Restore some empty rows... ");
+		//System.out.print("Restore some empty rows... ");
+		updateInterface(new ViewCommand(4, "Restore some empty rows... "));
 		restoreSomeEmptyRows(rows);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(4, "Restore some empty rows... Done."));
 		
-		System.out.print("Detect and remove no KTS tables... ");
+		//System.out.print("Detect and remove no KTS tables... ");
+		updateInterface(new ViewCommand(5, "Detect and remove no KTS tables... "));
 		ExcelRange[] grayTablesIndices =  detectGrayTables(rows.toArray(new RowEntity[0]));
 		int[] noKTSRangesIndices = detectNoKTSRanges(grayTablesIndices, rows.toArray(new RowEntity[0]));
 		removeAreasFromList(grayTablesIndices, rows, noKTSRangesIndices);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(5, "Detect and remove no KTS tables... Done."));
 		
-		System.out.print("Detect and remove empty ATAKs... ");
+		//System.out.print("Detect and remove empty ATAKs... ");
+		updateInterface(new ViewCommand(6, "Detect and remove empty ATAKs... "));
 		ExcelRange[] emptyATAKsIndices =  detectEmptyATAKs(rows.toArray(new RowEntity[0]));
 		removeAreasFromList(emptyATAKsIndices, rows, null);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(6, "Detect and remove empty ATAKs... Done."));
 		
-		System.out.print("Remove extra rows... ");
+		//System.out.print("Remove extra rows... ");
+		updateInterface(new ViewCommand(7, "Remove extra rows... "));
 		removeExtraRows(rows);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(7, "Remove extra rows... Done."));
 		
-		System.out.print("Modify titles... ");
+		//System.out.print("Modify titles... ");
+		updateInterface(new ViewCommand(8, "Modify titles... "));
 		modifyATAKsTitles(rows.toArray(new RowEntity[0]));
 		modifyTitle(rows.toArray(new RowEntity[0]), 0, 0);
-		System.out.print("Done.\n");
+		//System.out.print("Done.\n");
+		updateInterface(new ViewCommand(8, "Modify titles... Done."));
 		
-		System.out.println("Complete.");
+		//System.out.println("Complete.");
+		updateInterface(new ViewCommand(9, "Complete."));
 	}
 	
 	private void removeAreasFromList(ExcelRange[] areas, List<RowEntity> list, int[] areasIndices)
@@ -222,7 +250,7 @@ public class DOMReportProcessor {
 	private void removeExtraRows(List<RowEntity> rows)
 	{
 		for (int i = rows.size()-1; i >= 0; i--) {
-			if(!RowDetector.isEmptyRow(rows.get(i)) && (rows.get(i).getCells()[5].getData().contains("Вызов группы") || rows.get(i).getCells()[5].getData().contains("Прибытие группы")))
+			if(!RowDetector.isEmptyRow(rows.get(i)) && (rows.get(i).getCells()[5].getData().contains("Вызов группы") || rows.get(i).getCells()[5].getData().contains("Прибытие группы") || rows.get(i).getCells()[5].getData().contains("Отмена вызова группы")))
 			{
 				rows.remove(i);
 			}
@@ -372,7 +400,7 @@ public class DOMReportProcessor {
 		}
 	}
 	
-	private static void removeRow(Sheet sheet, int rowIndex, boolean init, boolean removeAreas)
+	private void removeRow(Sheet sheet, int rowIndex, boolean init, boolean removeAreas)
 	{
 		if(removeAreas)
 		{
@@ -397,7 +425,7 @@ public class DOMReportProcessor {
 		}
 	}
 	
-	private static Integer[] getRowMergedIndices(Sheet sheet, int row)
+	private Integer[] getRowMergedIndices(Sheet sheet, int row)
 	{
 		List<Integer> cellRangeAddresses = new ArrayList<Integer>();
 		CellRangeAddress currentCellRangeAddress;
